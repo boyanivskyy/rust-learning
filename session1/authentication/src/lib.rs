@@ -1,4 +1,14 @@
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs, io, path::Path};
+
+pub fn hash_password(password: &str) -> String {
+    use sha2::Digest;
+
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(password);
+
+    format!("{:X}", hasher.finalize())
+}
 
 pub fn greet_user(name: &str) -> String {
     format!("Welcome {name}")
@@ -10,13 +20,13 @@ pub enum LoginAction {
     Denied,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub enum LoginRole {
     Admin,
     User,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub username: String,
     pub password: String,
@@ -27,33 +37,13 @@ impl User {
     pub fn new(username: &str, password: &str, role: LoginRole) -> User {
         Self {
             username: username.to_lowercase(),
-            password: password.to_string(),
+            password: hash_password(password),
             role,
         }
     }
 }
 
-pub fn get_users() -> Vec<User> {
-    // let mut users = vec![];
-    // users.push(User::new("admin", "password", LoginRole::Admin));
-
-    vec![
-        User::new("admin", "password", LoginRole::Admin),
-        User::new("boyanivskyy", "password", LoginRole::User),
-    ]
-}
-
-fn get_admin_usernames() -> Vec<String> {
-    let users: Vec<String> = get_users()
-        .into_iter()
-        .filter(|u| u.role == LoginRole::Admin)
-        .map(|u| u.username)
-        .collect();
-
-    users
-}
-
-fn get_users_hashmap() -> HashMap<String, User> {
+pub fn get_default_users() -> HashMap<String, User> {
     let mut users_hashmap = HashMap::new();
 
     users_hashmap.insert(
@@ -68,17 +58,33 @@ fn get_users_hashmap() -> HashMap<String, User> {
     users_hashmap
 }
 
+pub fn get_users() -> HashMap<String, User> {
+    let users_path = Path::new("users.json");
+    if users_path.exists() {
+        // Load the file!
+        let users_json = fs::read_to_string(users_path).unwrap();
+        let users: HashMap<String, User> = serde_json::from_str(&users_json).unwrap();
+        users
+    } else {
+        let users = get_default_users();
+        let users_json = serde_json::to_string(&users).unwrap();
+        fs::write(users_path, users_json).unwrap();
+        users
+    }
+}
+
 pub fn login(username: &str, password: &str) -> Option<LoginAction> {
     let username = username.to_lowercase();
+    let password_hash = hash_password(password);
 
     // NOTE: approach with vector
     // let users = get_users();
     // if let Some(user) = users.iter().find(|user| user.username == username) {
 
     // NOTE: approach with hash map
-    let users = get_users_hashmap();
+    let users = get_users();
     if let Some(user) = users.get(&username) {
-        if user.password == password {
+        if user.password == password_hash {
             return Some(LoginAction::Granted(user.role.clone()));
         } else {
             return Some(LoginAction::Denied);
@@ -90,7 +96,7 @@ pub fn login(username: &str, password: &str) -> Option<LoginAction> {
 
 pub fn read_line() -> String {
     let mut input = String::new();
-    std::io::stdin()
+    io::stdin()
         .read_line(&mut input)
         .expect("Std in is not working");
 
