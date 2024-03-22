@@ -3,6 +3,7 @@ use authentication::{greet_user, login, read_line, LoginAction, LoginRole};
 fn main() {
     let mut tries = 0;
     loop {
+
         println!("Enter your username:");
         let username = read_line();
 
@@ -15,6 +16,8 @@ fn main() {
                     LoginRole::Admin => println!("Admin!"),
                     LoginRole::User => println!("User!")
                 }
+                
+                greet_user(&username);
 
                 break;
             }
