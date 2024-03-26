@@ -13,5 +13,5 @@ members = [
   "session1/login",
   "session1/login_manager",
   "session1/variables", "session2/divide_work",
-  "session2/hello", "session2/thread_builder",
+  "session2/hello", "session2/scoped_threads", "session2/thread_builder",
 ]
